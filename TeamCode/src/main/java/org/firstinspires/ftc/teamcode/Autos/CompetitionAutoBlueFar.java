@@ -181,11 +181,11 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
 
         Actions.runBlocking(
                 new SequentialAction(
-                        shooter.runForDuration(0.82,1.5),
+                        shooter.runForDuration(0.76,1.5),
                         traj1.build(),
                         new ParallelAction(
                                 intake.runForDuration(1,1,4),
-                                shooter.runForDuration(0.82,4)
+                                shooter.runForDuration(0.76,4)
                         ),
                         traj2.build(),
                         new ParallelAction(
@@ -195,7 +195,7 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
                         trajectoryActionCloseOut,
                         new ParallelAction(
                                 intake.runForDuration(1,1,4),
-                                shooter.runForDuration(0.82,4)
+                                shooter.runForDuration(0.76,4)
                         ),
                         traj2.build()
                 )

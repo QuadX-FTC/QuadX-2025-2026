@@ -19,7 +19,7 @@ public class CompetitionTeleOp extends OpMode{
     boolean gamepad2DpadDownWasPressed = false;
 
     // init states for outtake and shroud
-    double targetOuttakePwr = 0.0;
+    double targetOuttakePwr = 0.8;
     double pos = 0.5;
     // outtake toggle
     boolean outtakeOn = false;
@@ -76,6 +76,7 @@ public class CompetitionTeleOp extends OpMode{
             targetOuttakePwr += 0.05; // Increment by 5%
             targetOuttakePwr = Range.clip(targetOuttakePwr, 0.0, 1.0);
             telemetry.addData("Outtake Target Power", targetOuttakePwr);
+            telemetry.update();
         }
         gamepad1DpadUpWasPressed = gamepad1.dpad_up;
 
@@ -83,6 +84,7 @@ public class CompetitionTeleOp extends OpMode{
             targetOuttakePwr -= 0.05; // Decrement by 5%
             targetOuttakePwr = Range.clip(targetOuttakePwr, 0.0, 1.0);
             telemetry.addData("Outtake Target Power", targetOuttakePwr);
+            telemetry.update();
         }
         gamepad1DpadDownWasPressed = gamepad1.dpad_down;
 
