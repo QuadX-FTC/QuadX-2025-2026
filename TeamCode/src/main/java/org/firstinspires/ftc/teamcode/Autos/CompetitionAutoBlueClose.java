@@ -134,14 +134,14 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
         // int visionOutputPosition = 1;
 
         TrajectoryActionBuilder traj1 = drive.actionBuilder(initialPose)
-                .strafeToSplineHeading(new Vector2d(-48, -30), Math.toRadians(207));
+                .strafeToSplineHeading(new Vector2d(-45, -25), Math.toRadians(230));
 
-        TrajectoryActionBuilder traj2 = drive.actionBuilder(initialPose)
-                .lineToXLinearHeading(-32, Math.toRadians(270));
+        TrajectoryActionBuilder traj2 = traj1.endTrajectory().fresh()
+                .strafeToLinearHeading(new Vector2d(-18.5, -25), Math.toRadians(270));
 
         TrajectoryActionBuilder traj3 = traj2.endTrajectory().fresh()
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(-32, -42), Math.toRadians(270))
+                .splineToConstantHeading(new Vector2d(-18.5, -46), Math.toRadians(270))
                 //.waitSeconds(3)
                 ;
         /*
@@ -152,7 +152,7 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
                 .waitSeconds(3);
                 */
         Action trajectoryActionCloseOut = traj3.endTrajectory().fresh()
-                .strafeToSplineHeading(new Vector2d(-48, -30), Math.toRadians(207))
+                .strafeToSplineHeading(new Vector2d(-45, -25), Math.toRadians(230))
                 .build();
 
         while (!isStopRequested() && !opModeIsActive()) {
@@ -181,23 +181,21 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
 
         Actions.runBlocking(
                 new SequentialAction(
-                        shooter.runForDuration(0.6,1.5),
+                        shooter.runForDuration(0.59,1.5),
                         traj1.build(),
-                        new ParallelAction(
-                                intake.runForDuration(1,1,4),
-                                shooter.runForDuration(0.6,4)
-                        ),
+                        intake.runForDuration(1,1,1),
+                        intake.runForDuration(-0.2,1,1),
+                        intake.runForDuration(1,1,2),
                         traj2.build(),
                         new ParallelAction(
                                 traj3.build(),
-                                intake.runForDuration(1,-1,2)
+                                intake.runForDuration(1,-0.5,2)
                         ),
                         trajectoryActionCloseOut,
-                        new ParallelAction(
-                                intake.runForDuration(1,1,4),
-                                shooter.runForDuration(0.6,4)
+                        intake.runForDuration(1,1,1),
+                        intake.runForDuration(-0.2,1,1),
+                        intake.runForDuration(1,1,2)
                         )
-                )
         );
     }
 }

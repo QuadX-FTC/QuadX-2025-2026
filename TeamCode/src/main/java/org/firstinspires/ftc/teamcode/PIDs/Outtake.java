@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.util.Range;
 
 public class Outtake {
     private ElapsedTime time;
-    private DcMotorEx outtake;
+    private DcMotorEx outtake, outtake2;
     private double tolerance;
     double previousTime;
     double currentTime;
@@ -21,15 +21,19 @@ public class Outtake {
     double Kd;
     double max_i;
     double min_i;
-    double motorPower;
+    double motorVelocity;
 
     public void init() {
         time = new ElapsedTime();
 
-        outtake = hardwareMap.get(DcMotorEx.class, "liftLeft");
-        outtake.setDirection(DcMotor.Direction.FORWARD);
-        outtake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        outtake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        outtake = hardwareMap.get(DcMotorEx.class, "outtake");
+        outtake.setDirection(DcMotorEx.Direction.REVERSE);
+        outtake.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
+        outtake.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+
+        outtake2 = hardwareMap.get(DcMotorEx.class, "outtake2");
+        outtake2.setDirection(DcMotorEx.Direction.REVERSE);
+        outtake2.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
 
         tolerance = 0.05;
         previousTime = 0;
@@ -39,38 +43,40 @@ public class Outtake {
         Kd = 0;
         max_i = 0.03;
         min_i = -0.03;
-        motorPower = 0;
+        motorVelocity = 0;
         currentTime = 0;
         error = 0;
     }
 
-    public void outtake(double targetPower) {
+    public void outtake(double targetVelocity, double Kp, double Ki, double Kd) {
         init();
         double p = 0;
         double i = 0;
         double d = 0;
 
-        double currentPower = (double)outtake.getPower();
+        double currentVelocity = (double)outtake.getVelocity();
 
-        while (Math.abs(targetPower - currentPower) > tolerance) {
+        while (Math.abs(targetVelocity - currentVelocity) > tolerance) {
             currentTime = time.milliseconds();
-            error = targetPower - currentPower;
-            if (error < 0) {
+            error = targetVelocity - currentVelocity;
+            if (error > 0) {
                 p = Kp * error;
                 i += (Ki * (error * (currentTime - previousTime)));
                 i = Range.clip(i, min_i, max_i);
                 d = Kd * (error - previousError) / (currentTime - previousTime);
-                motorPower = p + i + d;
+                motorVelocity = p + i + d;
             } else {
-                motorPower = 0;
+                motorVelocity = 0;
             }
 
             previousError = error;
             previousTime = currentTime;
-            currentPower = (double)outtake.getPower();
-            telemetry.addData("Outtake Power: ", outtake.getPower());
+            currentVelocity = (double)outtake.getVelocity();
+            outtake.setVelocity(motorVelocity);
+            outtake2.setVelocity(motorVelocity);
+            telemetry.addData("Outtake Velocity: ", outtake.getVelocity());
+            telemetry.addData("Outtake2 Velocity: ", outtake2.getVelocity());
             telemetry.update();
-            outtake.setPower(motorPower);
         }
     }
 }
