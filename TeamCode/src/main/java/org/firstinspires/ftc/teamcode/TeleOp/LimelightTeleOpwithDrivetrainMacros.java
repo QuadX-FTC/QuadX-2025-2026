@@ -1,16 +1,23 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
+
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.limelightvision.*;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.PIDs.Drivetrain;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp
@@ -22,8 +29,24 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
     private Limelight3A Lemon;
     private Drivetrain drivetrainMacros;
     double tx;
+    private double tolerance;
+    double previousTime;
+    double currentTime;
+    double previousError;
+    double error;
+    double Kp;
+    double Ki;
+    double Kd;
+    double max_i;
+    double min_i;
+    double motorPower;
+    private IMU imu;
+    private ElapsedTime time;
     @Override
     public void init() {
+
+        time = new ElapsedTime();
+
         fr = hardwareMap.dcMotor.get("fr");
         fl = hardwareMap.dcMotor.get("fl");
         br = hardwareMap.dcMotor.get("br");
@@ -53,6 +76,28 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
         Lemon.start();
 
         Lemon.pipelineSwitch(0);
+
+        imu = hardwareMap.get(IMU.class, "imu");
+        IMU.Parameters parameters = new IMU.Parameters(
+                new RevHubOrientationOnRobot(
+                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                )
+        );
+        imu.initialize(parameters);
+        imu.resetYaw();
+
+        tolerance = 0.5;
+        previousTime = 0;
+        previousError = 0;
+        Kp = 5;
+        Ki = 10;
+        Kd = 0;
+        max_i = 0.2;
+        min_i = -0.2;
+        motorPower = 0;
+        currentTime = 0;
+        error = 0;
     }
 
     @Override
@@ -98,10 +143,6 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
             turn = snapInput(turn);
         }
 
-        if (gamepad1.b && results.isValid()) {
-            drivetrainMacros.turn(tx);
-        }
-
         double frPower = Range.clip(drive + turn - strafe, -1.0, 1.0);
         double flPower = Range.clip(drive - turn + strafe, -1.0, 1.0);
         double brPower = Range.clip(drive + turn + strafe, -1.0, 1.0);
@@ -111,6 +152,37 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
         fl.setPower(flPower);
         br.setPower(brPower);
         bl.setPower(blPower);
+
+        if (gamepad1.b && results.isValid()) {
+                double targetHeading = -3.8;
+                double p = 0;
+                double i = 0;
+                double d = 0;
+
+                YawPitchRollAngles robotOrientation = imu.getRobotYawPitchRollAngles();
+                double heading = results.getTx();
+
+                if (Math.abs(targetHeading - heading) > tolerance) {
+                    currentTime = time.milliseconds();
+                    error = targetHeading - heading;
+                    p = Kp * error;
+                    i += (Ki * (error * (currentTime - previousTime)));
+                    i = Range.clip(i, min_i, max_i);
+                    d = Kd * (error - previousError) / (currentTime - previousTime);
+
+                    motorPower = p + i + d;
+
+                    previousError = error;
+                    previousTime = currentTime;
+                    heading = robotOrientation.getYaw(AngleUnit.DEGREES);
+                    fl.setPower(motorPower);
+                    fr.setPower(motorPower);
+                    bl.setPower(motorPower * -1);
+                    fr.setPower(motorPower * -1);
+                }
+        }
+
+
 
         telemetry.addData("Straight Assist", straightAssist ? "ON" : "OFF");
         telemetry.addData("Drive", drive);

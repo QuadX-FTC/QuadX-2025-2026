@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -9,6 +10,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.teamcode.Autos.LimelightAutoFunctions;
+import org.firstinspires.ftc.teamcode.PIDs.Drivetrain;
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp
 public class LimelightTeleOp extends OpMode {
@@ -18,6 +21,7 @@ public class LimelightTeleOp extends OpMode {
 
     private HuskyLens Husky;
     private Limelight3A Lemon;
+    private String ObeliskFace;
 
     @Override
     public void init() {
@@ -94,18 +98,29 @@ public class LimelightTeleOp extends OpMode {
             turn = snapInput(turn);
         }
 
-        if (gamepad1.b){
+        if (gamepad1.b) {
             double tx = results.getTx();
+        }
 
-            if ((tx > 0) && results.isValid()){
-                turn = (float) ((float)tx * -0.1);
-            }
-
-            if ((tx < 0) && results.isValid()){
-                turn = (float) ((float)tx * 0.1);
+        ObeliskFace = "null";
+        if (results.isValid()){
+            if (results.getFiducialResults().contains(21)){
+                ObeliskFace = "GreenLeft";
             }
         }
 
+        if (results.isValid()){
+            if (results.getFiducialResults().contains(22)){
+                ObeliskFace = "GreenMiddle";
+            }
+        }
+
+        if (results.isValid()){
+            if (results.getFiducialResults().contains(23)){
+                ObeliskFace = "GreenRight";
+            }
+        }
+/*
         if (gamepad1.a){
             double ty = results.getTx();
 
@@ -117,7 +132,7 @@ public class LimelightTeleOp extends OpMode {
                 turn = (float) ((float)ty * 0.1);
             }
         }
-
+*/
 
 
         double frPower = Range.clip(drive + turn - strafe, -1.0, 1.0);
@@ -134,6 +149,7 @@ public class LimelightTeleOp extends OpMode {
         telemetry.addData("Drive", drive);
         telemetry.addData("Strafe", strafe);
         telemetry.addData("Turn", turn);
+        telemetry.addData("type shit",ObeliskFace);
         telemetry.update();
 
         TagDetection();
