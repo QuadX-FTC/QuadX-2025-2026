@@ -74,7 +74,6 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
         Lemon = hardwareMap.get(Limelight3A.class,"limelight");
         Lemon.setPollRateHz(100); //this is how many times we ask the Limelight for information PER SECOND.
         Lemon.start();
-
         Lemon.pipelineSwitch(0);
 
         imu = hardwareMap.get(IMU.class, "imu");
@@ -87,12 +86,12 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
         imu.initialize(parameters);
         imu.resetYaw();
 
-        tolerance = 0.5;
+        tolerance = 0.65;
         previousTime = 0;
         previousError = 0;
-        Kp = 5;
-        Ki = 10;
-        Kd = 0;
+        Kp = -3;
+        Ki = -10;
+        Kd = -0.5;
         max_i = 0.2;
         min_i = -0.2;
         motorPower = 0;
@@ -154,7 +153,7 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
         bl.setPower(blPower);
 
         if (gamepad1.b && results.isValid()) {
-                double targetHeading = -3.8;
+                double targetHeading = 0;
                 double p = 0;
                 double i = 0;
                 double d = 0;
@@ -174,11 +173,11 @@ public class LimelightTeleOpwithDrivetrainMacros extends OpMode {
 
                     previousError = error;
                     previousTime = currentTime;
-                    heading = robotOrientation.getYaw(AngleUnit.DEGREES);
-                    fl.setPower(motorPower);
+                    heading = results.getTx();
+                    fl.setPower(motorPower * -1);
                     fr.setPower(motorPower);
-                    bl.setPower(motorPower * -1);
-                    fr.setPower(motorPower * -1);
+                    bl.setPower(motorPower);
+                    br.setPower(motorPower * -1);
                 }
         }
 
