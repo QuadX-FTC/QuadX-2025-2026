@@ -1,22 +1,55 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.telemetry;
+
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.teamcode.PIDs.Outtake;
+
 @TeleOp(name="CompetitionTeleOp", group="TeleOp")
 public class CompetitionTeleOp extends OpMode{
     private DcMotorEx outtake, outtake2, fl, fr, bl, br, frontIntake, backIntake;
     private Servo shroud;
+
+    double tx;
+    private double tolerance;
+    double previousTime;
+    double currentTime;
+    double previousError;
+    double error;
+    double Kp;
+    double Ki;
+    double Kd;
+    double max_i;
+    double min_i;
+    double motorPower;
+    private IMU imu;
+    private ElapsedTime time;
+    private Limelight3A Lemon;
+    double motorVelocity;
+
+    double currentVelocity;
 
     // control state variables for toggles
     boolean gamepad1DpadUpWasPressed = false;
     boolean gamepad1DpadDownWasPressed = false;
     boolean gamepad2DpadUpWasPressed = false;
     boolean gamepad2DpadDownWasPressed = false;
+    boolean gamepad2DpadLeftWasPressed = false;
+    boolean gamepad2DpadRightWasPressed = false;
 
     // init states for outtake and shroud
     double targetOuttakePwr = 0.8;
@@ -24,8 +57,20 @@ public class CompetitionTeleOp extends OpMode{
     // outtake toggle
     boolean outtakeOn = false;
 
+    double specialKP;
+    double specialKI;
+    double specialKD;
+    double specialtolerance;
+    double outtakeVelocity;
+    double targetVelocity = 1000;
+
+
+
     @Override
     public void init() {
+
+        time = new ElapsedTime();
+
         outtake = hardwareMap.get(DcMotorEx.class, "outtake");
         outtake.setDirection(DcMotorEx.Direction.REVERSE);
         outtake.setMode(DcMotorEx.RunMode.STOP_AND_RESET_ENCODER);
@@ -66,27 +111,59 @@ public class CompetitionTeleOp extends OpMode{
 
         frontIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        int[] validIDs = {20,24};
+        Lemon = hardwareMap.get(Limelight3A.class,"limelight");
+        Lemon.setPollRateHz(100); //this is how many times we ask the Limelight for information PER SECOND.
+        Lemon.start();
+        Lemon.pipelineSwitch(0);
+
+        imu = hardwareMap.get(IMU.class, "imu");
+        IMU.Parameters parameters = new IMU.Parameters(
+                new RevHubOrientationOnRobot(
+                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                )
+        );
+        imu.initialize(parameters);
+        imu.resetYaw();
+
+        tolerance = 0.65;
+        previousTime = 0;
+        previousError = 0;
+        Kp = -3;
+        Ki = -10;
+        Kd = -0.5;
+        max_i = 0.2;
+        min_i = -0.2;
+        motorPower = 0;
+        currentTime = 0;
+        error = 0;
+        specialKP = 30;
+        specialKI = 15;
+        specialKD = 25;
+        specialtolerance = 10;
+
+        telemetry.setMsTransmissionInterval(10);
     }
 
     @Override
     public void loop() {
         // Outtake power toggle
         // dpad up to increase by 5%, dpad down to decrease by 5%
-        if (gamepad1.dpad_up && !gamepad1DpadUpWasPressed) {
+        if (gamepad1.dpad_up && !gamepad1.dpad_up) {
             targetOuttakePwr += 0.05; // Increment by 5%
             targetOuttakePwr = Range.clip(targetOuttakePwr, 0.0, 1.0);
             telemetry.addData("Outtake Target Power", targetOuttakePwr);
             telemetry.update();
         }
-        gamepad1DpadUpWasPressed = gamepad1.dpad_up;
 
-        if (gamepad1.dpad_down && !gamepad1DpadDownWasPressed) {
+        if (gamepad1.dpad_down && !gamepad1.dpad_down) {
             targetOuttakePwr -= 0.05; // Decrement by 5%
             targetOuttakePwr = Range.clip(targetOuttakePwr, 0.0, 1.0);
             telemetry.addData("Outtake Target Power", targetOuttakePwr);
             telemetry.update();
         }
-        gamepad1DpadDownWasPressed = gamepad1.dpad_down;
 
         //Outtake
         //right trigger to turn on shooter, left trigger to turn on shooter (no need to hold down trigger)
@@ -111,16 +188,98 @@ public class CompetitionTeleOp extends OpMode{
         double drive = gamepad1.left_stick_y;
         double turn = -gamepad1.right_stick_x;
         double strafe = gamepad1.left_stick_x;
+        
 
-        double flPower = drive + turn - strafe;
-        double frPower = drive - turn + strafe;
-        double blPower = drive + turn + strafe;
-        double brPower = drive - turn - strafe;
+        LLResult results = Lemon.getLatestResult();
 
-        fl.setPower(Range.clip(flPower, -1.0, 1.0));
-        fr.setPower(Range.clip(frPower, -1.0, 1.0));
-        bl.setPower(Range.clip(blPower, -1.0, 1.0));
-        br.setPower(Range.clip(brPower, -1.0, 1.0));
+        if (!(results == null) && results.isValid()){
+            tx = results.getTx(); // How far left or right the target is (degrees)
+            double ty = results.getTy(); // How far up or down the target is (degrees)
+            double ta = results.getTa(); // How big the target looks (0%-100% of the image)
+
+            telemetry.addData("Target X", tx);
+            telemetry.addData("Target Y", ty);
+            telemetry.addData("Target Area", ta);
+        } else{
+            telemetry.addData("Limelight: ","No Targets");
+        }
+
+        if (results != null) {
+            if (results.isValid()) {
+                Pose3D botpose = results.getBotpose();
+                telemetry.addData("tx", results.getTx());
+                telemetry.addData("ty", results.getTy());
+                telemetry.addData("Botpose", botpose.toString());
+            }
+        }
+
+        double frPower = Range.clip(drive + turn - strafe, -1.0, 1.0);
+        double flPower = Range.clip(drive - turn + strafe, -1.0, 1.0);
+        double brPower = Range.clip(drive + turn + strafe, -1.0, 1.0);
+        double blPower = Range.clip(drive - turn - strafe, -1.0, 1.0);
+
+        fr.setPower(frPower);
+        fl.setPower(flPower);
+        br.setPower(brPower);
+        bl.setPower(blPower);
+
+        if (gamepad1.b && results.isValid()) {
+            double targetHeading = 0;
+            double p = 0;
+            double i = 0;
+            double d = 0;
+
+            YawPitchRollAngles robotOrientation = imu.getRobotYawPitchRollAngles();
+            double heading = results.getTx();
+
+            if ((Math.abs(targetHeading - heading) > tolerance) && !(targetVelocity + 40 < currentVelocity)){
+                currentTime = time.milliseconds();
+                error = targetHeading - heading;
+                p = Kp * error;
+                i += (Ki * (error * (currentTime - previousTime)));
+                i = Range.clip(i, min_i, max_i);
+                d = Kd * (error - previousError) / (currentTime - previousTime);
+
+                motorPower = p + i + d;
+
+                previousError = error;
+                previousTime = currentTime;
+                heading = results.getTx();
+                fl.setPower(motorPower);
+                fr.setPower(motorPower * -1);
+                bl.setPower(motorPower * -1);
+                br.setPower(motorPower);
+                }
+        }
+
+        if (gamepad2.back) {
+            double p = 0;
+            double i = 0;
+            double d = 0;
+
+            currentVelocity = outtake.getVelocity();
+            //if (Math.abs(targetVelocity - currentVelocity) > specialtolerance) {
+            if ((Math.abs(targetVelocity - currentVelocity) > specialtolerance)){
+                currentTime = time.milliseconds();
+                error = targetVelocity - currentVelocity;
+                if (error > 0) {
+                    p = specialKP * error;
+                    i += (specialKI * (error * (currentTime - previousTime)));
+                    i = Range.clip(i, min_i, max_i);
+                    d = specialKD * (error - previousError) / (currentTime - previousTime);
+                    outtakeVelocity = p + i + d;
+                }
+
+                previousError = error;
+                previousTime = currentTime;
+                currentVelocity = outtake.getVelocity();
+                outtake.setVelocity(outtakeVelocity);
+                outtake2.setVelocity(outtakeVelocity);
+
+            }
+            outtake.setVelocity(outtakeVelocity);
+            outtake2.setVelocity(outtakeVelocity);
+        }
 
         //Intake
         if (gamepad2.right_bumper) {
@@ -159,6 +318,21 @@ public class CompetitionTeleOp extends OpMode{
         }
         gamepad2DpadDownWasPressed= gamepad2.dpad_down;
 
+        //changing of the target velocity for the PID. Increments are 20 each, subject to change.
+        if (gamepad2.dpad_left && !gamepad2DpadLeftWasPressed){
+            targetVelocity = targetVelocity - 20;
+        }
+        gamepad2DpadLeftWasPressed = gamepad2.dpad_left;
+
+        if (gamepad2.dpad_right && !gamepad2DpadRightWasPressed){
+            targetVelocity = targetVelocity + 20;
+        }
+        gamepad2DpadRightWasPressed = gamepad2.dpad_right;
+
+        telemetry.addData("TargetVelocity: ",targetVelocity);
+        telemetry.addData("Outtake Velocity: ", outtake.getPower());
+        telemetry.addData("Outtake2 Velocity: ", outtake2.getPower());
+        telemetry.addData("Shooter Current Velocity", currentVelocity);
         telemetry.update();
     }
 }
