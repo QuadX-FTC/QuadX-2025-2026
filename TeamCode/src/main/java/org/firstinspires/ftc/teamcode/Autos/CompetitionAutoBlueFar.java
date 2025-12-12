@@ -15,6 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import org.firstinspires.ftc.teamcode.MecanumDrive;
+import org.firstinspires.ftc.teamcode.Autos.SpecializedAutoFunctions;
 
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -117,8 +118,44 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
                 }
             }
         }
+
+        public class RunPID implements Action {
+            SpecializedAutoFunctions controller = new SpecializedAutoFunctions();
+            double targetVelocity;
+            private boolean initialized = false;
+            private final double durationSeconds;
+            private ElapsedTime runtime = new ElapsedTime();
+
+            public RunPID(double targetVelocity, double durationSeconds) {
+                this.targetVelocity = targetVelocity;
+                this.durationSeconds = durationSeconds;
+            }
+
+            @Override
+            public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+                if (!initialized) {
+                    runtime.reset(); // Start the timer
+                    controller.ShooterPIDSpinUp(targetVelocity, outtake1, outtake2,runtime);
+                    initialized = true;
+                }
+
+                // Check if the elapsed time is less than the desired time
+                if (runtime.seconds() < durationSeconds) {
+                    return true; // Continue running
+                } else {
+                    //outtake1.setPower(0); // Stop the motors
+                    //outtake2.setPower(0);
+                    return false; // Stop running
+                }
+            }
+        }
+
         public Action runForDuration(double power, double durationSeconds) {
             return new Outtake1.RunOuttakeForTime(power, durationSeconds);
+        }
+
+        public Action runPID(double targetVelocity, double duration) {
+            return new Outtake1.RunPID(targetVelocity, duration);
         }
     }
 
@@ -134,7 +171,9 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
         // int visionOutputPosition = 1;
 
         TrajectoryActionBuilder traj1 = drive.actionBuilder(initialPose)
+                .waitSeconds(10)
                 .strafeToSplineHeading(new Vector2d(55, -10), Math.toRadians(207));
+
 
         TrajectoryActionBuilder traj2 = drive.actionBuilder(initialPose)
                 .lineToXLinearHeading(33, Math.toRadians(270));
@@ -156,8 +195,7 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
                 .build();
 
         while (!isStopRequested() && !opModeIsActive()) {
-            //int position = visionOutputPosition;
-            //telemetry.addData("Position during Init", position);
+            //int position = visionOutputPosition
             //telemetry.update();
         }
 
@@ -181,11 +219,11 @@ public class CompetitionAutoBlueFar extends LinearOpMode {
 
         Actions.runBlocking(
                 new SequentialAction(
-                        shooter.runForDuration(0.76,1.5),
                         traj1.build(),
                         new ParallelAction(
-                                intake.runForDuration(1,1,4),
-                                shooter.runForDuration(0.76,4)
+                                //shooter.runForDuration(0.76,4)
+                                shooter.runPID(1500, 4),
+                                intake.runForDuration(1,1,4)
                         ),
                         traj2.build(),
                         new ParallelAction(

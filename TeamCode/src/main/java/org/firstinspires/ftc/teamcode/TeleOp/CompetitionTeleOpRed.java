@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
-import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.telemetry;
-
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -17,10 +17,9 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
-import org.firstinspires.ftc.teamcode.PIDs.Outtake;
 
-@TeleOp(name="CompetitionTeleOp", group="TeleOp")
-public class CompetitionTeleOp extends OpMode{
+@TeleOp(name="CompetitionTeleOpRed", group="TeleOp")
+public class CompetitionTeleOpRed extends OpMode{
     private DcMotorEx outtake, outtake2, fl, fr, bl, br, frontIntake, backIntake;
     private Servo shroud;
 
@@ -51,18 +50,25 @@ public class CompetitionTeleOp extends OpMode{
     boolean gamepad2DpadLeftWasPressed = false;
     boolean gamepad2DpadRightWasPressed = false;
 
+    boolean gamepad2DpadBackWasPressed = false;
+
     // init states for outtake and shroud
     double targetOuttakePwr = 0.8;
     double pos = 0.5;
     // outtake toggle
     boolean outtakeOn = false;
-
+    boolean toggle = false;
     double specialKP;
     double specialKI;
     double specialKD;
     double specialtolerance;
     double outtakeVelocity;
-    double targetVelocity = 1000;
+    double targetVelocity = 1500;
+
+    double p;
+    double i;
+    double d;
+
 
 
 
@@ -70,6 +76,9 @@ public class CompetitionTeleOp extends OpMode{
     public void init() {
 
         time = new ElapsedTime();
+
+        FtcDashboard dashboard = FtcDashboard.getInstance();
+        telemetry = new MultipleTelemetry(telemetry,dashboard.getTelemetry());
 
         outtake = hardwareMap.get(DcMotorEx.class, "outtake");
         outtake.setDirection(DcMotorEx.Direction.REVERSE);
@@ -116,7 +125,7 @@ public class CompetitionTeleOp extends OpMode{
         Lemon = hardwareMap.get(Limelight3A.class,"limelight");
         Lemon.setPollRateHz(100); //this is how many times we ask the Limelight for information PER SECOND.
         Lemon.start();
-        Lemon.pipelineSwitch(0);
+        Lemon.pipelineSwitch(1);
 
         imu = hardwareMap.get(IMU.class, "imu");
         IMU.Parameters parameters = new IMU.Parameters(
@@ -128,19 +137,19 @@ public class CompetitionTeleOp extends OpMode{
         imu.initialize(parameters);
         imu.resetYaw();
 
-        tolerance = 0.65;
+        tolerance = 0.63;
         previousTime = 0;
         previousError = 0;
-        Kp = -3;
-        Ki = -10;
-        Kd = -0.5;
+        Kp = 0.15;
+        Ki = 0.05;
+        Kd = 0.3;
         max_i = 0.2;
         min_i = -0.2;
         motorPower = 0;
         currentTime = 0;
         error = 0;
-        specialKP = 30;
-        specialKI = 15;
+        specialKP = 25; //Re-tune testing = 15
+        specialKI = 20;
         specialKD = 25;
         specialtolerance = 10;
 
@@ -186,8 +195,8 @@ public class CompetitionTeleOp extends OpMode{
 
         //Drive
         double drive = gamepad1.left_stick_y;
-        double turn = -gamepad1.right_stick_x;
-        double strafe = gamepad1.left_stick_x;
+        double turn = gamepad1.right_stick_x;
+        double strafe = -gamepad1.left_stick_x;
         
 
         LLResult results = Lemon.getLatestResult();
@@ -225,9 +234,9 @@ public class CompetitionTeleOp extends OpMode{
 
         if (gamepad1.b && results.isValid()) {
             double targetHeading = 0;
-            double p = 0;
-            double i = 0;
-            double d = 0;
+            p = 0;
+            i = 0;
+            d = 0;
 
             YawPitchRollAngles robotOrientation = imu.getRobotYawPitchRollAngles();
             double heading = results.getTx();
@@ -235,31 +244,39 @@ public class CompetitionTeleOp extends OpMode{
             if ((Math.abs(targetHeading - heading) > tolerance) && !(targetVelocity + 40 < currentVelocity)){
                 currentTime = time.milliseconds();
                 error = targetHeading - heading;
-                p = Kp * error;
+                p = (Kp * error);
                 i += (Ki * (error * (currentTime - previousTime)));
                 i = Range.clip(i, min_i, max_i);
-                d = Kd * (error - previousError) / (currentTime - previousTime);
+                d = (Kd * (error - previousError) / (currentTime - previousTime));
 
-                motorPower = p + i + d;
+                motorPower = (p + i + d);
 
                 previousError = error;
                 previousTime = currentTime;
                 heading = results.getTx();
                 fl.setPower(motorPower);
                 fr.setPower(motorPower * -1);
-                bl.setPower(motorPower * -1);
-                br.setPower(motorPower);
-                }
+                bl.setPower(motorPower);
+                br.setPower(motorPower * -1);
+            }
         }
 
-        if (gamepad2.back) {
-            double p = 0;
-            double i = 0;
-            double d = 0;
+        if(gamepad2.left_stick_button){
+            targetVelocity = 1500;
+        }
+
+        if ((gamepad2.back) && (toggle)){
+            toggle = false;
+        }
+
+        if (!(toggle)) {
+            p = 0;
+            i = 0;
+            d = 0;
 
             currentVelocity = outtake.getVelocity();
             //if (Math.abs(targetVelocity - currentVelocity) > specialtolerance) {
-            if ((Math.abs(targetVelocity - currentVelocity) > specialtolerance)){
+            if ((Math.abs(targetVelocity - currentVelocity) > specialtolerance) && (currentVelocity < targetVelocity)){
                 currentTime = time.milliseconds();
                 error = targetVelocity - currentVelocity;
                 if (error > 0) {
@@ -268,6 +285,10 @@ public class CompetitionTeleOp extends OpMode{
                     i = Range.clip(i, min_i, max_i);
                     d = specialKD * (error - previousError) / (currentTime - previousTime);
                     outtakeVelocity = p + i + d;
+
+                    if (targetVelocity < currentVelocity){
+                        outtakeVelocity = (p + i + d)*-2;
+                    }
                 }
 
                 previousError = error;
@@ -279,6 +300,8 @@ public class CompetitionTeleOp extends OpMode{
             }
             outtake.setVelocity(outtakeVelocity);
             outtake2.setVelocity(outtakeVelocity);
+
+            toggle = true;
         }
 
         //Intake
@@ -333,6 +356,11 @@ public class CompetitionTeleOp extends OpMode{
         telemetry.addData("Outtake Velocity: ", outtake.getPower());
         telemetry.addData("Outtake2 Velocity: ", outtake2.getPower());
         telemetry.addData("Shooter Current Velocity", currentVelocity);
+        telemetry.addData("Is PID Active", toggle);
+        telemetry.addData("p",p);
+        telemetry.addData("i",i);
+        telemetry.addData("d",d);
+        telemetry.addData("error",error);
         telemetry.update();
     }
 }

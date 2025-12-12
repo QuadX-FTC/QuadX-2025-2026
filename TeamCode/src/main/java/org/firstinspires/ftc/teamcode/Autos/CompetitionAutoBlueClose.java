@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.Autos;
 
+
 import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -16,19 +17,25 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import org.firstinspires.ftc.teamcode.MecanumDrive;
 
+
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+
 
 @Config
 @Autonomous(name = "CompetitionAutoBlueClose", group = "Autonomous")
 public class CompetitionAutoBlueClose extends LinearOpMode {
 
+
     //Outtake pid = new Outtake();
+
 
     public class Intake {
         private DcMotorEx intakeFront;
         private DcMotorEx intakeBack;
+
 
         public Intake(HardwareMap hardwareMap) {
             intakeFront = hardwareMap.get(DcMotorEx.class, "frontIntake");
@@ -45,11 +52,13 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
             private ElapsedTime runtime = new ElapsedTime();
             private boolean initialized = false;
 
+
             public RunIntakeForTime(double powerFront, double powerBack, double durationSeconds) {
                 this.powerFront = powerFront;
                 this.powerBack = powerBack;
                 this.durationSeconds = durationSeconds;
             }
+
 
             @Override
             public boolean run(@NonNull TelemetryPacket packet) {
@@ -59,6 +68,7 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
                     intakeBack.setPower(powerBack);
                     initialized = true;
                 }
+
 
                 // Check if the elapsed time is less than the desired time
                 if (runtime.seconds() < durationSeconds) {
@@ -75,9 +85,11 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
         }
     }
 
+
     public class Outtake1 {
         private DcMotorEx outtake1;
         private DcMotorEx outtake2;
+
 
         public Outtake1 (HardwareMap hardwareMap){
             outtake1 = hardwareMap.get(DcMotorEx.class, "outtake");
@@ -93,10 +105,12 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
             private ElapsedTime runtime = new ElapsedTime();
             private boolean initialized = false;
 
+
             public RunOuttakeForTime(double power, double durationSeconds) {
                 this.power = power;
                 this.durationSeconds = durationSeconds;
             }
+
 
             @Override
             public boolean run(@NonNull TelemetryPacket packet) {
@@ -106,6 +120,7 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
                     outtake2.setPower(power);
                     initialized = true;
                 }
+
 
                 // Check if the elapsed time is less than the desired time
                 if (runtime.seconds() < durationSeconds) {
@@ -123,6 +138,8 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
     }
 
 
+
+
     @Override
     public void runOpMode() {
         Pose2d initialPose = new Pose2d(-56, -46, Math.toRadians(180));
@@ -130,72 +147,102 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
         Intake intake = new Intake(hardwareMap);
         Outtake1 shooter = new Outtake1(hardwareMap);
 
+
         // vision here that outputs pattern (Do later)
         // int visionOutputPosition = 1;
 
+
         TrajectoryActionBuilder traj1 = drive.actionBuilder(initialPose)
-                .strafeToSplineHeading(new Vector2d(-45, -25), Math.toRadians(230));
+                .strafeToSplineHeading(new Vector2d(-40, -15.5), Math.toRadians(228));
+
 
         TrajectoryActionBuilder traj2 = traj1.endTrajectory().fresh()
-                .strafeToLinearHeading(new Vector2d(-18.5, -25), Math.toRadians(270));
+                .strafeToLinearHeading(new Vector2d(-19.5, -24), Math.toRadians(270));
+
 
         TrajectoryActionBuilder traj3 = traj2.endTrajectory().fresh()
                 .setTangent(Math.toRadians(270))
-                .splineToConstantHeading(new Vector2d(-18.5, -46), Math.toRadians(270))
-                //.waitSeconds(3)
-                ;
-        /*
-        TrajectoryActionBuilder tab3 = drive.actionBuilder(initialPose)
-                .lineToYSplineHeading(33, Math.toRadians(180))
-                .waitSeconds(2)
-                .strafeTo(new Vector2d(46, 30))
-                .waitSeconds(3);
-                */
-        Action trajectoryActionCloseOut = traj3.endTrajectory().fresh()
-                .strafeToSplineHeading(new Vector2d(-45, -25), Math.toRadians(230))
+                .splineToConstantHeading(new Vector2d(-19.5, -46), Math.toRadians(270));
+
+
+        TrajectoryActionBuilder traj4 = traj3.endTrajectory().fresh()
+                .strafeToSplineHeading(new Vector2d(-40, -15.5), Math.toRadians(235));
+
+
+        TrajectoryActionBuilder traj5 = traj4.endTrajectory().fresh()
+                .setTangent(Math.toRadians(270))
+                .strafeToLinearHeading(new Vector2d(2, -24), Math.toRadians(270));
+
+
+        TrajectoryActionBuilder traj6 = traj5.endTrajectory().fresh()
+                .setTangent(Math.toRadians(270))
+                .splineToConstantHeading(new Vector2d(2, -56), Math.toRadians(270))
+                .strafeToSplineHeading(new Vector2d(2, -40), Math.toRadians(270));
+
+
+        Action trajectoryActionCloseOut = traj6.endTrajectory().fresh()
+                .setTangent(Math.toRadians(90))
+                .strafeToSplineHeading(new Vector2d(-40, -15.5), Math.toRadians(234))
                 .build();
 
+
         while (!isStopRequested() && !opModeIsActive()) {
+            Servo shroud = hardwareMap.get(Servo.class, "shroudCont");
+            shroud.setPosition(0.5);
             //int position = visionOutputPosition;
             //telemetry.addData("Position during Init", position);
             //telemetry.update();
         }
+
 
         //int startPosition = visionOutputPosition;
         //telemetry.addData("Starting Position", startPosition);
         //telemetry.update();
         waitForStart();
 
+
         if (isStopRequested()) return;
 
-        /*
-        Action trajectoryActionChosen;
-        if (startPosition == 1) {
-            trajectoryActionChosen = tab1.build();
-        } else if (startPosition == 2) {
-            trajectoryActionChosen = tab2.build();
-        } else {
-            trajectoryActionChosen = tab3.build();
-        }
-        */
+
+       /*
+       Action trajectoryActionChosen;
+       if (startPosition == 1) {
+           trajectoryActionChosen = tab1.build();
+       } else if (startPosition == 2) {
+           trajectoryActionChosen = tab2.build();
+       } else {
+           trajectoryActionChosen = tab3.build();
+       }
+       */
+
 
         Actions.runBlocking(
                 new SequentialAction(
-                        shooter.runForDuration(0.59,1.5),
+                        shooter.runForDuration(0.515,1.7),
                         traj1.build(),
                         intake.runForDuration(1,1,1),
                         intake.runForDuration(-0.2,1,1),
-                        intake.runForDuration(1,1,2),
+                        intake.runForDuration(1,1,1.7),
                         traj2.build(),
                         new ParallelAction(
                                 traj3.build(),
-                                intake.runForDuration(1,-0.5,2)
+                                intake.runForDuration(1,-0.7,2)
+                        ),
+                        traj4.build(),
+                        intake.runForDuration(1,1,1),
+                        intake.runForDuration(-0.2,1,1),
+                        intake.runForDuration(1,1,1.7),
+                        traj5.build(),
+                        new ParallelAction(
+                                traj6.build(),
+                                intake.runForDuration(1,-0.7,2)
                         ),
                         trajectoryActionCloseOut,
                         intake.runForDuration(1,1,1),
                         intake.runForDuration(-0.2,1,1),
-                        intake.runForDuration(1,1,2)
-                        )
+                        intake.runForDuration(1,1,2),
+                        traj3.build()
+                )
         );
     }
 }
