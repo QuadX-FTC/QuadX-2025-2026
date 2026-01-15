@@ -148,10 +148,10 @@ public class CompetitionTeleOpRed extends OpMode{
         motorPower = 0;
         currentTime = 0;
         error = 0;
-        specialKP = 25; //Re-tune testing = 15
-        specialKI = 20;
-        specialKD = 25;
-        specialtolerance = 10;
+        specialKP = 24; //Re-tune testing = 15
+        specialKI = 100;
+        specialKD = 110;
+        specialtolerance = 0;
 
         telemetry.setMsTransmissionInterval(10);
     }
@@ -276,24 +276,22 @@ public class CompetitionTeleOpRed extends OpMode{
 
             currentVelocity = outtake.getVelocity();
             //if (Math.abs(targetVelocity - currentVelocity) > specialtolerance) {
-            if ((Math.abs(targetVelocity - currentVelocity) > specialtolerance) && (currentVelocity < targetVelocity)){
+            if ((Math.abs(targetVelocity - currentVelocity) > specialtolerance)){
                 currentTime = time.milliseconds();
                 error = targetVelocity - currentVelocity;
-                if (error > 0) {
+
+                if (targetVelocity >= currentVelocity){
                     p = specialKP * error;
                     i += (specialKI * (error * (currentTime - previousTime)));
-                    i = Range.clip(i, min_i, max_i);
-                    d = specialKD * (error - previousError) / (currentTime - previousTime);
+                    i = Range.clip(i, -20, 20);
+                    d = specialKD * ((error - previousError) / (currentTime - previousTime));
                     outtakeVelocity = p + i + d;
-
-                    if (targetVelocity < currentVelocity){
-                        outtakeVelocity = (p + i + d)*-2;
-                    }
                 }
 
                 previousError = error;
                 previousTime = currentTime;
                 currentVelocity = outtake.getVelocity();
+                outtakeVelocity = Range.clip(outtakeVelocity,0,2000);
                 outtake.setVelocity(outtakeVelocity);
                 outtake2.setVelocity(outtakeVelocity);
 
@@ -314,7 +312,8 @@ public class CompetitionTeleOpRed extends OpMode{
         } else if (gamepad2.a) {
             frontIntake.setPower(1);
         }else if (gamepad2.b) {
-            backIntake.setPower(1);
+            backIntake.setPower(-0.6);
+            frontIntake.setPower(1);
         } else if (gamepad2.x) {
             frontIntake.setPower(-1);
         }else if (gamepad2.y) {

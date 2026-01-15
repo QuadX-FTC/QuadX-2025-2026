@@ -118,24 +118,25 @@ public class CompetitionTeleOpBlue extends OpMode{
         fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         br.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        frontIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        int[] validIDs = {20,24};
-        Lemon = hardwareMap.get(Limelight3A.class,"limelight");
-        Lemon.setPollRateHz(100); //this is how many times we ask the Limelight for information PER SECOND.
-        Lemon.start();
-        Lemon.pipelineSwitch(0);
+            frontIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            backIntake.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        imu = hardwareMap.get(IMU.class, "imu");
-        IMU.Parameters parameters = new IMU.Parameters(
-                new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
-                )
-        );
-        imu.initialize(parameters);
-        imu.resetYaw();
+            int[] validIDs = {20, 24};
+            Lemon = hardwareMap.get(Limelight3A.class, "limelight");
+            Lemon.setPollRateHz(100); //this is how many times we ask the Limelight for information PER SECOND.
+            Lemon.start();
+            Lemon.pipelineSwitch(0);
+
+            imu = hardwareMap.get(IMU.class, "imu");
+            IMU.Parameters parameters = new IMU.Parameters(
+                    new RevHubOrientationOnRobot(
+                            RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                            RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                    )
+            );
+            imu.initialize(parameters);
+            imu.resetYaw();
 
         tolerance = 0.63;
         previousTime = 0;
@@ -148,9 +149,9 @@ public class CompetitionTeleOpBlue extends OpMode{
         motorPower = 0;
         currentTime = 0;
         error = 0;
-        specialKP = 25; //25
-        specialKI = 20; //20
-        specialKD = 25; //25
+        specialKP = 24; //25
+        specialKI = 100; //20
+        specialKD = 110; //25
         specialtolerance = 10;
 
         telemetry.setMsTransmissionInterval(10);
@@ -227,6 +228,19 @@ public class CompetitionTeleOpBlue extends OpMode{
         double brPower = Range.clip(drive + turn + strafe, -1.0, 1.0);
         double blPower = Range.clip(drive - turn - strafe, -1.0, 1.0);
 
+        if (gamepad1.b){
+            fl.setPower(1);
+        }
+        if (gamepad1.a){
+            bl.setPower(1);
+        }
+        if (gamepad1.x){
+            fr.setPower(1);
+        }
+        if (gamepad1.y){
+            br.setPower(1);
+        }
+
         fr.setPower(frPower);
         fl.setPower(flPower);
         br.setPower(brPower);
@@ -263,6 +277,10 @@ public class CompetitionTeleOpBlue extends OpMode{
 
         if(gamepad2.left_stick_button){
             targetVelocity = 1500;
+        }
+
+        if(gamepad2.right_stick_button){
+            targetVelocity = 1200;
         }
 
         if ((gamepad2.back) && (toggle)){
@@ -314,7 +332,8 @@ public class CompetitionTeleOpBlue extends OpMode{
         } else if (gamepad2.a) {
             frontIntake.setPower(1);
         }else if (gamepad2.b) {
-            backIntake.setPower(1);
+            backIntake.setPower(-0.6);
+            frontIntake.setPower(1);
         } else if (gamepad2.x) {
             frontIntake.setPower(-1);
         }else if (gamepad2.y) {
@@ -353,9 +372,9 @@ public class CompetitionTeleOpBlue extends OpMode{
         gamepad2DpadRightWasPressed = gamepad2.dpad_right;
 
         telemetry.addData("TargetVelocity: ",targetVelocity);
-        telemetry.addData("Outtake Velocity: ", outtake.getPower());
-        telemetry.addData("Outtake2 Velocity: ", outtake2.getPower());
-        telemetry.addData("Shooter Current Velocity", currentVelocity);
+        //telemetry.addData("Outtake Velocity: ", outtake.getPower());
+        //telemetry.addData("Outtake2 Velocity: ", outtake2.getPower());
+        //telemetry.addData("Shooter Current Velocity", currentVelocity);
         telemetry.addData("Is PID Active", toggle);
         telemetry.addData("p",p);
         telemetry.addData("i",i);
