@@ -39,7 +39,7 @@ public class CompetitionTeleOpBlue extends OpMode {
     private boolean shooterPIDEnabled = false;
     private boolean lastLeftTrigger = false;
     private double targetVelocity = 1550; // Target velocity in ticks/sec (adjust as needed)
-    private double specialKP = 24; // Tune these based on your shooter
+    private double specialKP = 26; // Tune these based on your shooter
     private double specialKI = 100;
     private double specialKD = 110;
     private double specialtolerance = 10;
@@ -105,6 +105,7 @@ public class CompetitionTeleOpBlue extends OpMode {
         //handleLimelight();
         //handleAprilTagAlign();
         telemetry.addData("Target-Velocity", targetVelocity);
+        telemetry.addData("Shooter Current Velocity", currentVelocity);
 
         telemetry.update();
     }
@@ -262,5 +263,6 @@ public class CompetitionTeleOpBlue extends OpMode {
         }
         return 0; // No target or already aligned
     }
+
 
 }

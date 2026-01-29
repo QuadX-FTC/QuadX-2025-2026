@@ -7,6 +7,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -15,11 +16,15 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+
 @TeleOp(name="V2-CompetitionTeleOpRed", group="TeleOp")
 public class CompetitionTeleOpRed extends OpMode {
     // Hardware
     private DcMotorEx outtake, outtake2, fl, fr, bl, br, frontIntake, backIntake;
-    private Servo shroud, turret1, turret2;
+    private Servo shroud; //turret1, turret2
+
+    private CRServo turret1,turret2;
     private Limelight3A lemon;
     private IMU imu;
     private ElapsedTime time;
@@ -39,9 +44,14 @@ public class CompetitionTeleOpRed extends OpMode {
     private boolean shooterPIDEnabled = false;
     private boolean lastLeftTrigger = false;
     private double targetVelocity = 1550; // Target velocity in ticks/sec (adjust as needed)
-    private double specialKP = 24; // Tune these based on your shooter
+    private double specialKP = 26; // Tune these based on your shooter
     private double specialKI = 100;
     private double specialKD = 110;
+
+    private double turretKP = 0;
+    private double turretKI = 0;
+    private double turretKD = 0;
+    private double turretTolerance = 2;
     private double specialtolerance = 10;
     private double p = 0;
     private double d = 0;
@@ -75,12 +85,14 @@ public class CompetitionTeleOpRed extends OpMode {
         frontIntake = setupMotor("frontIntake", DcMotorSimple.Direction.FORWARD);
         backIntake = setupMotor("backIntake", DcMotorSimple.Direction.FORWARD);
 
-        /*
-        turret1 = hardwareMap.get(Servo.class, "turret1");
-        turret2 = hardwareMap.get(Servo.class, "turret2");
-        */
-        shroud = hardwareMap.get(Servo.class, "shroudCont");
-        shroud.setPosition(shroudPos);
+        turret1 = hardwareMap.get(CRServo.class, "turret1");
+        turret2 = hardwareMap.get(CRServo.class, "turret2");
+
+
+        turret1.setDirection(DcMotorSimple.Direction.FORWARD);
+        turret2.setDirection(DcMotorSimple.Direction.FORWARD);
+        //shroud = hardwareMap.get(Servo.class, "shroudCont");
+        //shroud.setPosition(shroudPos);
 
         // Sensors
         lemon = hardwareMap.get(Limelight3A.class, "limelight");
@@ -89,6 +101,8 @@ public class CompetitionTeleOpRed extends OpMode {
         lemon.start();
 
         time = new ElapsedTime();
+
+        telemetry.setMsTransmissionInterval(10);
 
         initIMU();
 
@@ -102,7 +116,9 @@ public class CompetitionTeleOpRed extends OpMode {
         handleDrive();
         handleLimelight();
         handleAprilTagAlign();
+        handleTurretControls();
         telemetry.addData("Target-Velocity", targetVelocity);
+        telemetry.addData("Shooter Current Velocity", currentVelocity);
 
         telemetry.update();
     }
@@ -218,6 +234,58 @@ public class CompetitionTeleOpRed extends OpMode {
             telemetry.addData("Botpose", result.getBotpose().toString());
         } else {
             telemetry.addData("Limelight", "No Target");
+        }
+    }
+
+    private void handleTurretControls() {
+        /*
+        if (gamepad2.dpad_left) {
+            turret1.setPosition(0);
+            turret2.setPosition(0);
+        }
+        if (gamepad2.dpad_right) {
+            turret1.setPosition(1);
+            turret2.setPosition(1);
+        }
+        */
+
+        if (gamepad2.back && lemon.getLatestResult().isValid()) {
+            double tx = lemon.getLatestResult().getTx();
+            double ta = lemon.getLatestResult().getTa();
+
+            if (Math.abs(tx) > 1) {
+                //turret1.setPosition(turret1.getPosition() - 0.005 * ta);
+                //turret2.setPosition(turret2.getPosition() - 0.005 * ta);
+
+                double targetHeading = 0;
+                double p = 0;
+                double i = 0;
+                double d = 0;
+
+                YawPitchRollAngles robotOrientation = imu.getRobotYawPitchRollAngles();
+                double heading = lemon.getLatestResult().getTx();
+                double turretPower = 0;
+
+                if ((Math.abs(targetHeading - heading) > turretTolerance)) {
+                    currentTime = time.milliseconds();
+                    error = targetHeading - heading;
+                    p = turretKP * error;
+                    i += (turretKI * (error * (currentTime - previousTime)));
+                    i = Range.clip(i, -1, 1);
+                    d = turretKD * (error - previousError) / (currentTime - previousTime);
+
+                    turretPower = p + i + d;
+
+                    previousError = error;
+                    previousTime = currentTime;
+
+                    turret1.setPower(turretPower);
+                    turret2.setPower(turretPower);
+
+                }
+
+
+            }
         }
     }
 

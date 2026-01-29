@@ -135,6 +135,7 @@ public class CompetitionAutoBlueClose extends LinearOpMode {
         public Action runForDuration(double power, double durationSeconds) {
             return new RunOuttakeForTime(power, durationSeconds);
         }
+
     }
 
 
